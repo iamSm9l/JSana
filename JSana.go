@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -50,7 +51,6 @@ func help() {
 	fmt.Println("Displaying the help page")
 	fmt.Println("Usage: JSana -u <FILE>")
 	fmt.Println("-u <FILE> : A file of js url's one on each line, (eg output from my tool 'wriggle')")
-	fmt.Println("-t <number> : Set the max timeout (in seconds) for connecting to a URL, default 20 seconds")
 	fmt.Println("-v : verbose mode, not advisiable unless you love spam")
 	fmt.Println("-h : Display this help page")
 	os.Exit(3)
@@ -128,7 +128,7 @@ func clean(nameOfFile string) {
 func extractInterestingStrings(fileString string, url string) {
 	fileString = strings.ToLower(fileString)
 	//InnerHTML finder
-	if strings.Contains(fileString, ".innerhtml") {
+	if strings.Contains(fileString, ".innerhtml=") || strings.Contains(fileString, ".innerhtml =") {
 		tmpString := "innerHTML : " + url
 		if !inArray(newInnerHTMLfound, tmpString) && !inArray(innerHTMlfound, tmpString) {
 			newInnerHTMLfound = append(newInnerHTMLfound, tmpString)
@@ -136,11 +136,13 @@ func extractInterestingStrings(fileString string, url string) {
 	}
 
 	//Jquery Html() finder
-	if strings.Contains(fileString, ".html(") {
-
-		tmpString := ".html( : " + url
+	myRegex, _ := regexp.Compile(`\.html\(.+\"*\".+\)`)
+	found := myRegex.FindAllString(fileString, -1)
+	if len(found) > 0 {
+		tmpString := strings.Join(found, " ") + " : " + url
 		if !inArray(newHTMLFound, tmpString) && !inArray(htmlFound, tmpString) {
 			newHTMLFound = append(newHTMLFound, tmpString)
+			fmt.Println("boo")
 		}
 	}
 
@@ -154,7 +156,7 @@ func extractInterestingStrings(fileString string, url string) {
 	}
 
 	//dangerouslySetInnerHTML finder
-	if strings.Contains(fileString, ".dangerouslysetinnerhtml") {
+	if strings.Contains(fileString, ".dangerouslysetinnerhtml=") || strings.Contains(fileString, ".dangerouslysetinnerhtml =") {
 
 		tmpString := ".dangerouslySetInnerHTML : " + url
 		if !inArray(newDangeorusFound, tmpString) && !inArray(dangerousFound, tmpString) {
@@ -171,8 +173,8 @@ func extractInterestingStrings(fileString string, url string) {
 	}
 
 	//key finder
-	if strings.Contains(fileString, "apikey") {
-		tmpString := "apikey : " + url
+	if strings.Contains(fileString, "apikey") || strings.Contains(fileString, "api_key") || strings.Contains(fileString, "api key") {
+		tmpString := "apikey / api_key / api key : " + url
 		if !inArray(newKeyFound, tmpString) && !inArray(keyFound, tmpString) {
 			newKeyFound = append(newKeyFound, tmpString)
 		}
