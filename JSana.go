@@ -29,6 +29,9 @@ var newS3BucketsFound []string
 var newKeyFound []string
 var keyFound []string
 var dirName string
+var defaultURLsfound string
+var jsURLtoFind string
+var URL string
 
 var defaultS3Name string
 var defaultInnerHTMLName string
@@ -52,6 +55,7 @@ func help() {
 	fmt.Println("Usage: JSana -u <FILE>")
 	fmt.Println("-u <FILE> : A file of js url's one on each line, (eg output from my tool 'wriggle')")
 	fmt.Println("-v : verbose mode, not advisiable unless you love spam")
+	fmt.Println("-j <URL STRING> : got A link but dont know where it came from? pass the url here")
 	fmt.Println("-h : Display this help page")
 	os.Exit(3)
 }
@@ -113,6 +117,7 @@ func processURL(url string) {
 	putIntoFile(fullPath, resp.Body)
 
 	fileString := string(body)
+
 	extractInterestingStrings(fileString, url)
 	clean(fullPath)
 
@@ -212,17 +217,23 @@ func main() {
 	defaultDangerouslySetInnerHTML = "DangerouslySetInnerHTMLof" + startTime
 	defaultKeyName = "KeyOf" + startTime
 	dirName = "_resultsOf" + startTime
+	defaultURLsfound = "foundURLcontainingJS" + startTime
 	os.Mkdir(dirName, 0777)
 
 	wantHelp := flag.Bool("h", false, "display help page")
 	maxTimeoutOption := flag.String("t", "20", "max timeout for connection timeouts")
 	jsFileName := flag.String("u", "", "js input")
+	jsURLtoFind := flag.String("j", "", "js url to find")
 	flag.Parse()
 
 	maxTimeout, _ = strconv.Atoi(*maxTimeoutOption)
 
 	if *wantHelp {
 		help()
+	}
+
+	if len(*jsURLtoFind) > 0 {
+		URL = *jsURLtoFind
 	}
 
 	if *jsFileName == "" {
