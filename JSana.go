@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"flag"
 	"fmt"
 	"io"
@@ -31,7 +30,6 @@ var keyFound []string
 var dirName string
 var defaultURLsfound string
 var jsURLtoFind string
-var URL string
 
 var defaultS3Name string
 var defaultInnerHTMLName string
@@ -39,6 +37,8 @@ var defaultHTMLName string
 var defaultEvalName string
 var defaultDangerouslySetInnerHTML string
 var defaultKeyName string
+
+var tempFileName string
 
 var reset string = "\033[0m"
 var red string = "\033[31m"
@@ -55,7 +55,6 @@ func help() {
 	fmt.Println("Usage: JSana -u <FILE>")
 	fmt.Println("-u <FILE> : A file of js url's one on each line, (eg output from my tool 'wriggle')")
 	fmt.Println("-v : verbose mode, not advisiable unless you love spam")
-	fmt.Println("-j <URL STRING> : got A link but dont know where it came from? pass the url here")
 	fmt.Println("-h : Display this help page")
 	os.Exit(3)
 }
@@ -112,19 +111,17 @@ func processURL(url string) {
 	}
 
 	// create safe file name
-	base64Name := base64.StdEncoding.EncodeToString([]byte(url))
-	fullPath := dirName + "/" + base64Name
-	putIntoFile(fullPath, resp.Body)
+	putIntoFile(resp.Body)
 
 	fileString := string(body)
 
 	extractInterestingStrings(fileString, url)
-	clean(fullPath)
+	clean()
 
 }
 
-func clean(nameOfFile string) {
-	err := os.Remove(nameOfFile)
+func clean() {
+	err := os.Remove(tempFileName)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -144,11 +141,7 @@ func extractInterestingStrings(fileString string, url string) {
 	myRegex, _ := regexp.Compile(`\.html\(.+\"*\".+\)`)
 	found := myRegex.FindAllString(fileString, -1)
 	if len(found) > 0 {
-		tmpString := strings.Join(found, " ") + " : " + url
-		if !inArray(newHTMLFound, tmpString) && !inArray(htmlFound, tmpString) {
-			newHTMLFound = append(newHTMLFound, tmpString)
-			fmt.Println("boo")
-		}
+		newHTMLFound = append(newHTMLFound, url)
 	}
 
 	//Eval finder
@@ -187,9 +180,9 @@ func extractInterestingStrings(fileString string, url string) {
 
 }
 
-func putIntoFile(fullPath string, respBody io.ReadCloser) {
+func putIntoFile(respBody io.ReadCloser) {
 	// create the file
-	out, err := os.Create(fullPath)
+	out, err := os.Create(tempFileName)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -217,23 +210,18 @@ func main() {
 	defaultDangerouslySetInnerHTML = "DangerouslySetInnerHTMLof" + startTime
 	defaultKeyName = "KeyOf" + startTime
 	dirName = "_resultsOf" + startTime
-	defaultURLsfound = "foundURLcontainingJS" + startTime
+	tempFileName = dirName + "/" + "tempWorkingFile"
 	os.Mkdir(dirName, 0777)
 
 	wantHelp := flag.Bool("h", false, "display help page")
 	maxTimeoutOption := flag.String("t", "20", "max timeout for connection timeouts")
 	jsFileName := flag.String("u", "", "js input")
-	jsURLtoFind := flag.String("j", "", "js url to find")
 	flag.Parse()
 
 	maxTimeout, _ = strconv.Atoi(*maxTimeoutOption)
 
 	if *wantHelp {
 		help()
-	}
-
-	if len(*jsURLtoFind) > 0 {
-		URL = *jsURLtoFind
 	}
 
 	if *jsFileName == "" {
